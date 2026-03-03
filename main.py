@@ -9,24 +9,29 @@ clients: List[WebSocket] = []
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
-
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     clients.append(websocket)
 
-    # если это первый клиент — скажем ему что он initiator
+    print("Client connected. Total:", len(clients))
+
     if len(clients) == 1:
         await websocket.send_text('{"type": "initiator"}')
+
+    if len(clients) == 2:
+        for client in clients:
+            await client.send_text('{"type": "ready"}')
+        print("Both clients ready")
 
     try:
         while True:
             data = await websocket.receive_text()
+            print("Received:", data)
 
             for client in clients:
                 if client != websocket:
@@ -34,3 +39,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         clients.remove(websocket)
+        print("Client disconnected")
