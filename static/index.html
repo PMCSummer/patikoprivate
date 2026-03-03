@@ -61,11 +61,6 @@ ws.onmessage = async (message) => {
         return;
     }
 
-    if (!peer) {
-        log("Peer not created yet");
-        return;
-    }
-
     if (data.type === "offer") {
         log("Received offer");
 
