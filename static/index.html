@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Call</title>
+</head>
+<body>
+    <h2>Simple Audio Call</h2>
+    <button id="start">Start Call</button>
+
+    <!-- ВАЖНО: audio вне script -->
+    <audio id="remoteAudio" autoplay playsinline></audio>
+
+    <script>
+        const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+        const ws = new WebSocket(protocol + location.host + "/ws");
+
+        let localStream;
+        let peer;
+        let isInitiator = false;
+
+        const configuration = {
+            iceServers: [
+                { urls: "stun:stun.l.google.com:19302" }
+            ]
+        };
+
+        ws.onmessage = async (message) => {
+            const data = JSON.parse(message.data);
+            console.log("WS:", data);
+
+            if (data.type === "initiator") {
+                isInitiator = true;
+                return;
+            }
+
+            if (!peer) return;
+
+            if (data.type === "offer") {
+                await peer.setRemoteDescription(new RTCSessionDescription(data.offer));
+
+                const answer = await peer.createAnswer();
+                await peer.setLocalDescription(answer);
+
+                ws.send(JSON.stringify({
+                    type: "answer",
+                    answer: answer
+                }));
+            }
+
+            if (data.type === "answer") {
+                await peer.setRemoteDescription(new RTCSessionDescription(data.answer));
+            }
+
+            if (data.type === "ice") {
+                await peer.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        };
+
+        document.getElementById("start").onclick = async () => {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            peer = new RTCPeerConnection(configuration);
+
+            localStream.getTracks().forEach(track => {
+                peer.addTrack(track, localStream);
+            });
+
+            peer.ontrack = (event) => {
+                const audio = document.getElementById("remoteAudio");
+                audio.srcObject = event.streams[0];
+            };
+
+            peer.onicecandidate = (event) => {
+                if (event.candidate) {
+                    ws.send(JSON.stringify({
+                        type: "ice",
+                        candidate: event.candidate
+                    }));
+                }
+            };
+
+            peer.oniceconnectionstatechange = () => {
+                console.log("ICE:", peer.iceConnectionState);
+            };
+
+            // Если мы инициатор — создаём offer ТОЛЬКО после создания peer
+            if (isInitiator) {
+                const offer = await peer.createOffer();
+                await peer.setLocalDescription(offer);
+
+                ws.send(JSON.stringify({
+                    type: "offer",
+                    offer: offer
+                }));
+            }
+        };
+    </script>
+</body>
+</html>
