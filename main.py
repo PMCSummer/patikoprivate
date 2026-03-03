@@ -33,6 +33,12 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_text()
             print("Received:", data)
 
+            # если клиентов два, назначаем initiator первому подключившемуся
+            if len(clients) == 2 and not any(getattr(c, "initiator_sent", False) for c in clients):
+                clients[0].initiator_sent = True
+                await clients[0].send_text('{"type": "initiator"}')
+                print("Initiator assigned")
+
             for client in clients:
                 if client != websocket:
                     await client.send_text(data)
