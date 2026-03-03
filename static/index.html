@@ -51,6 +51,10 @@ ws.onmessage = async (message) => {
         isReady = true;
         log("Both clients ready");
 
+        if (!peer) {
+            await createPeer();
+        }
+
         if (started && isInitiator) {
             await createOffer();
         }
