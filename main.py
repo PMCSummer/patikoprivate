@@ -1,13 +1,11 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from typing import List
 
 app = FastAPI()
-
-clients: List[WebSocket] = []
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+room = []
 
 @app.get("/")
 async def root():
@@ -16,27 +14,35 @@ async def root():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.append(websocket)
 
-    print("Client connected. Total:", len(clients))
+    if len(room) >= 2:
+        await websocket.close()
+        return
 
-    if len(clients) == 1:
-        await websocket.send_text('{"type": "initiator"}')
+    room.append(websocket)
+    print("Client connected:", len(room))
 
-    if len(clients) == 2:
-        for client in clients:
-            await client.send_text('{"type": "ready"}')
-        print("Both clients ready")
+    # Первый — инициатор
+    if len(room) == 1:
+        await websocket.send_json({"type": "initiator"})
+
+    # Когда двое — готовы
+    if len(room) == 2:
+        for ws in room:
+            await ws.send_json({"type": "ready"})
 
     try:
         while True:
             data = await websocket.receive_text()
-            print("Received:", data)
 
-            for client in clients:
+            for client in room:
                 if client != websocket:
                     await client.send_text(data)
 
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        room.remove(websocket)
         print("Client disconnected")
+
+        # Сообщаем второму, что всё сломалось
+        for client in room:
+            await client.send_json({"type": "peer_disconnected"})
