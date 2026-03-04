@@ -3,249 +3,190 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Simple Call</title>
+<title>Reliable Call</title>
 
 <style>
-    body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #0f1115;
-        color: #fff;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-    }
-
-    .card {
-        background: #1a1d24;
-        padding: 40px;
-        border-radius: 20px;
-        width: 340px;
-        text-align: center;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    }
-
-    h2 {
-        margin-top: 0;
-        font-weight: 500;
-    }
-
-    .status {
-        margin: 15px 0;
-        font-size: 14px;
-        opacity: 0.8;
-    }
-
-    button {
-        width: 100%;
-        padding: 12px;
-        border: none;
-        border-radius: 12px;
-        font-size: 15px;
-        cursor: pointer;
-        transition: 0.2s ease;
-    }
-
-    #start {
-        background: #2e7dff;
-        color: white;
-    }
-
-    #start:hover {
-        background: #4c8fff;
-    }
-
-    #start:disabled {
-        background: #555;
-        cursor: not-allowed;
-    }
-
-    audio {
-        display: none;
-    }
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f1115;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+.card {
+    background: #1a1d24;
+    padding: 40px;
+    border-radius: 20px;
+    width: 360px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    cursor: pointer;
+    background: #2e7dff;
+    color: white;
+}
+button:disabled {
+    background: #555;
+}
+.status {
+    margin: 15px 0;
+    font-size: 14px;
+    opacity: 0.85;
+}
+audio { display:none; }
 </style>
 </head>
-
 <body>
 
 <div class="card">
-    <h2>🎙 Simple Audio Call</h2>
+    <h2>🎙 Reliable Audio Call</h2>
     <div class="status" id="status">Connecting...</div>
     <button id="start" disabled>Start Call</button>
     <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
 
 <script>
-const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-const ws = new WebSocket(protocol + location.host + "/ws");
-
+let ws;
 let peer = null;
 let localStream = null;
 
 let isInitiator = false;
 let isReady = false;
 let started = false;
+let bothStarted = false;
 
 const statusEl = document.getElementById("status");
 const startBtn = document.getElementById("start");
 const remoteAudio = document.getElementById("remoteAudio");
 
-function setStatus(text) {
-    statusEl.textContent = text;
-    console.log("[STATUS]", text);
+function setStatus(s){
+    statusEl.textContent = s;
+    console.log("[STATUS]", s);
 }
 
-const configuration = {
-    iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        {
-            urls: "turn:openrelay.metered.ca:80",
-            username: "openrelayproject",
-            credential: "openrelayproject"
-        }
-    ]
-};
+function connectWS(){
+    const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+    ws = new WebSocket(protocol + location.host + "/ws");
 
-function createPeer() {
-    if (peer) return;
+    ws.onopen = () => setStatus("Waiting for second user...");
 
-    peer = new RTCPeerConnection(configuration);
-
-    peer.ontrack = (event) => {
-        remoteAudio.srcObject = event.streams[0];
-        setStatus("Connected 🔊");
+    ws.onclose = () => {
+        setStatus("Reconnecting...");
+        setTimeout(connectWS, 1000);
     };
 
-    peer.onicecandidate = (event) => {
-        if (event.candidate) {
-            ws.send(JSON.stringify({
-                type: "ice",
-                candidate: event.candidate
-            }));
-        }
-    };
+    ws.onmessage = async (msg)=>{
+        const data = JSON.parse(msg.data);
 
-    peer.oniceconnectionstatechange = () => {
-        console.log("ICE:", peer.iceConnectionState);
+        if(data.type==="initiator") isInitiator = true;
 
-        if (peer.iceConnectionState === "failed") {
-            setStatus("Connection failed ❌");
-        }
-    };
-
-    peer.onconnectionstatechange = () => {
-        console.log("Peer:", peer.connectionState);
-
-        if (peer.connectionState === "connected") {
-            setStatus("Call active 🎧");
+        if(data.type==="ready"){
+            isReady = true;
+            startBtn.disabled = false;
+            setStatus("Ready");
         }
 
-        if (peer.connectionState === "disconnected") {
-            setStatus("Disconnected");
+        if(data.type==="both_started"){
+            bothStarted = true;
+            setStatus("Connecting peers...");
+            if(isInitiator) await createOffer();
+        }
+
+        if(data.type==="offer"){
+            await ensurePeer();
+            await peer.setRemoteDescription(data.offer);
+            const answer = await peer.createAnswer();
+            await peer.setLocalDescription(answer);
+            ws.send(JSON.stringify({type:"answer",answer}));
+        }
+
+        if(data.type==="answer"){
+            await peer.setRemoteDescription(data.answer);
+        }
+
+        if(data.type==="ice"){
+            if(peer) await peer.addIceCandidate(data.candidate);
+        }
+
+        if(data.type==="peer_disconnected"){
+            setStatus("Peer left");
             reset();
         }
     };
 }
 
-async function createOffer() {
+connectWS();
+
+const config = {
+    iceServers:[
+        {urls:"stun:stun.l.google.com:19302"},
+        {
+            urls:"turn:openrelay.metered.ca:80",
+            username:"openrelayproject",
+            credential:"openrelayproject"
+        }
+    ]
+};
+
+async function ensurePeer(){
+    if(peer) return;
+    peer = new RTCPeerConnection(config);
+
+    peer.ontrack = e=>{
+        remoteAudio.srcObject = e.streams[0];
+        setStatus("Call active 🎧");
+    };
+
+    peer.onicecandidate = e=>{
+        if(e.candidate){
+            ws.send(JSON.stringify({type:"ice",candidate:e.candidate}));
+        }
+    };
+}
+
+async function createOffer(){
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
-
-    ws.send(JSON.stringify({
-        type: "offer",
-        offer: offer
-    }));
+    ws.send(JSON.stringify({type:"offer",offer}));
 }
 
-function reset() {
-    if (peer) {
-        peer.close();
-        peer = null;
+function reset(){
+    if(peer){ peer.close(); peer=null; }
+    if(localStream){
+        localStream.getTracks().forEach(t=>t.stop());
+        localStream=null;
     }
-
-    if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-    }
-
-    started = false;
-    startBtn.disabled = !isReady;
-    setStatus("Ready");
+    started=false;
+    bothStarted=false;
+    startBtn.disabled=!isReady;
 }
 
-ws.onopen = () => {
-    setStatus("Waiting for second user...");
-};
+startBtn.onclick = async ()=>{
+    if(started) return;
 
-ws.onmessage = async (message) => {
-    const data = JSON.parse(message.data);
-
-    if (data.type === "initiator") {
-        isInitiator = true;
-    }
-
-    if (data.type === "ready") {
-        isReady = true;
-        startBtn.disabled = false;
-        setStatus("Ready to start");
-    }
-
-    if (data.type === "offer") {
-        createPeer();
-        await peer.setRemoteDescription(data.offer);
-
-        const answer = await peer.createAnswer();
-        await peer.setLocalDescription(answer);
-
-        ws.send(JSON.stringify({
-            type: "answer",
-            answer: answer
-        }));
-    }
-
-    if (data.type === "answer") {
-        await peer.setRemoteDescription(data.answer);
-    }
-
-    if (data.type === "ice") {
-        if (peer && data.candidate) {
-            try {
-                await peer.addIceCandidate(data.candidate);
-            } catch (e) {
-                console.error("ICE error", e);
-            }
-        }
-    }
-
-    if (data.type === "peer_disconnected") {
-        setStatus("Peer left");
-        reset();
-    }
-};
-
-startBtn.onclick = async () => {
-    if (started) return;
-
-    started = true;
-    startBtn.disabled = true;
+    started=true;
+    startBtn.disabled=true;
     setStatus("Accessing microphone...");
 
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    await ensurePeer();
 
-    createPeer();
-
-    localStream.getTracks().forEach(track => {
-        peer.addTrack(track, localStream);
+    localStream.getTracks().forEach(t=>{
+        peer.addTrack(t,localStream);
     });
 
-    if (isInitiator) {
-        await createOffer();
-    }
-
-    setStatus("Calling...");
+    ws.send(JSON.stringify({type:"start"}));
+    setStatus("Waiting for peer...");
 };
 </script>
-
 </body>
 </html>
