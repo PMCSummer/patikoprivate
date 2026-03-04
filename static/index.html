@@ -127,14 +127,31 @@ function connectWS(){
 connectWS();
 
 const config = {
-    iceServers:[
-        {urls:"stun:stun.l.google.com:19302"},
-        {
-            urls:"turn:openrelay.metered.ca:80",
-            username:"openrelayproject",
-            credential:"openrelayproject"
-        }
-    ]
+  iceServers: [
+    {
+      urls: "stun:stun.relay.metered.ca:80",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80",
+      username: "63864b01e4a0797f25e621f0",
+      credential: "cxnzOHJAAXJDNJtp",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:80?transport=tcp",
+      username: "63864b01e4a0797f25e621f0",
+      credential: "cxnzOHJAAXJDNJtp",
+    },
+    {
+      urls: "turn:global.relay.metered.ca:443",
+      username: "63864b01e4a0797f25e621f0",
+      credential: "cxnzOHJAAXJDNJtp",
+    },
+    {
+      urls: "turns:global.relay.metered.ca:443?transport=tcp",
+      username: "63864b01e4a0797f25e621f0",
+      credential: "cxnzOHJAAXJDNJtp",
+    }
+  ]
 };
 
 async function ensurePeer(){
