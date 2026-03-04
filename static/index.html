@@ -140,7 +140,9 @@ document.getElementById("start").onclick = async () => {
     log("Start clicked");
 
     localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    await createPeer();
+    if (!peer) {
+        await createPeer();
+    }
 
     localStream.getTracks().forEach(track => {
         peer.addTrack(track, localStream);
