@@ -1,11 +1,21 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+import uuid
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-room = []
+class Room:
+    def __init__(self):
+        self.clients = {}
+        self.started = {}
+
+    async def broadcast(self, message: dict):
+        for ws in self.clients.values():
+            await ws.send_json(message)
+
+room = Room()
 
 @app.get("/")
 async def root():
@@ -15,34 +25,50 @@ async def root():
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
-    if len(room) >= 2:
+    if len(room.clients) >= 2:
         await websocket.close()
         return
 
-    room.append(websocket)
-    print("Client connected:", len(room))
+    client_id = str(uuid.uuid4())
+    room.clients[client_id] = websocket
+    room.started[client_id] = False
+
+    print("Connected:", len(room.clients))
 
     # Первый — инициатор
-    if len(room) == 1:
+    if len(room.clients) == 1:
         await websocket.send_json({"type": "initiator"})
 
-    # Когда двое — готовы
-    if len(room) == 2:
-        for ws in room:
-            await ws.send_json({"type": "ready"})
+    # Если двое — сообщаем готовность
+    if len(room.clients) == 2:
+        await room.broadcast({"type": "ready"})
 
     try:
         while True:
-            data = await websocket.receive_text()
+            data = await websocket.receive_json()
 
-            for client in room:
-                if client != websocket:
-                    await client.send_text(data)
+            # фиксируем кто нажал start
+            if data["type"] == "start":
+                room.started[client_id] = True
+
+                if all(room.started.values()):
+                    await room.broadcast({"type": "both_started"})
+                continue
+
+            # пересылаем сигнальные данные
+            for cid, client in room.clients.items():
+                if cid != client_id:
+                    await client.send_json(data)
 
     except WebSocketDisconnect:
-        room.remove(websocket)
-        print("Client disconnected")
+        print("Disconnected")
+        room.clients.pop(client_id, None)
+        room.started.pop(client_id, None)
 
-        # Сообщаем второму, что всё сломалось
-        for client in room:
-            await client.send_json({"type": "peer_disconnected"})
+        # если кто-то ушёл — сбрасываем комнату
+        if room.clients:
+            await room.broadcast({"type": "peer_disconnected"})
+
+        # очищаем полностью
+        if len(room.clients) == 0:
+            room.started.clear()
