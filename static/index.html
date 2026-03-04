@@ -8,41 +8,126 @@
 <style>
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0f1115;
-    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    background: radial-gradient(1200px 600px at 50% 0%, #1c1f26 0%, #0c0e12 60%);
+    color: #f5f5f7;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+    letter-spacing: -0.01em;
 }
+
+/* Алюминиевый корпус */
 .card {
-    background: #1a1d24;
-    padding: 40px;
-    border-radius: 20px;
-    width: 360px;
+    position: relative;
+    background: linear-gradient(
+        145deg,
+        #2a2f38 0%,
+        #1c2027 40%,
+        #16191f 100%
+    );
+    padding: 48px 40px;
+    border-radius: 28px;
+    width: 380px;
     text-align: center;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+
+    box-shadow:
+        0 30px 80px rgba(0,0,0,0.65),
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 -1px 0 rgba(0,0,0,0.4);
+    
+    border: 1px solid rgba(255,255,255,0.04);
 }
+
+/* Лёгкая металлическая текстура */
+.card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    background-image: linear-gradient(
+        rgba(255,255,255,0.015) 1px,
+        transparent 1px
+    );
+    background-size: 100% 2px;
+    pointer-events: none;
+}
+
+/* Заголовок */
+h2 {
+    margin: 0 0 24px 0;
+    font-weight: 600;
+    font-size: 20px;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+}
+
+/* Статус */
+.status {
+    margin: 20px 0;
+    font-size: 14px;
+    color: #b8bcc5;
+    font-weight: 500;
+}
+
+/* Кнопка в стиле алюминиевой панели */
 button {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
+    border-radius: 16px;
     border: none;
-    border-radius: 12px;
-    font-size: 15px;
-    cursor: pointer;
-    background: #2e7dff;
-    color: white;
-}
-button:disabled {
-    background: #555;
-}
-.status {
-    margin: 15px 0;
     font-size: 14px;
-    opacity: 0.85;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+
+    background: linear-gradient(
+        180deg,
+        #3a8bff 0%,
+        #2f6df6 100%
+    );
+
+    box-shadow:
+        0 8px 20px rgba(47,109,246,0.35),
+        inset 0 1px 0 rgba(255,255,255,0.25);
+
+    color: white;
+    transition: all 0.2s ease;
 }
-audio { display:none; }
+
+/* Hover — как лёгкое отражение света */
+button:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 12px 25px rgba(47,109,246,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* Нажатие */
+button:active {
+    transform: translateY(0px);
+    box-shadow:
+        0 4px 12px rgba(47,109,246,0.35),
+        inset 0 2px 4px rgba(0,0,0,0.4);
+}
+
+/* Disabled */
+button:disabled {
+    background: linear-gradient(
+        180deg,
+        #3a3f47 0%,
+        #2a2e35 100%
+    );
+    color: #7a7f88;
+    box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.6);
+    cursor: not-allowed;
+}
+
+audio {
+    display: none;
+}
 </style>
 </head>
 <body>
