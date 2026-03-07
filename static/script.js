@@ -1,5 +1,21 @@
 document.addEventListener("DOMContentLoaded", () => {
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function createAudio(src, volume = 0.6) {
+  const track = new Audio(`${src}?cb=${Date.now()}`); // cachebuster
+  track.volume = volume;
+  
+  // подключение к AudioContext
+  const source = audioCtx.createMediaElementSource(track);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
 
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+
+  track.play().catch(err => console.warn("Audio play failed:", err));
+
+  return { track, analyser };
+}
 let step = 0
 let typing = false
 
@@ -27,7 +43,6 @@ where something honest begins.`,
 
 const text = document.getElementById("text")
 const next = document.getElementById("next")
-const music = document.getElementById("music")
 
 function showScene(){
 
@@ -77,80 +92,57 @@ function typeText(html, element, speed = 35){
 
 showScene()
 
+let activeAnalyser;
+let musicTrack;
+
 next.onclick = () => {
+  if(typing) return;
 
-if(typing) return
+  if(step === 0){
+    if(audioCtx.state === 'suspended') audioCtx.resume(); // автозапуск в браузерах
+    const { track, analyser } = createAudio("/sound/all_i_need_instrumental.mp3", 0.6);
+    musicTrack = track;
+    activeAnalyser = analyser;  // <- подключаем анализатор здесь
+  }
 
-if(step === 0){
+  step++;
 
-music.volume = 0.6
-music.play().catch(()=>{})
-
-}
-
-step++
-
-if(step < scenes.length){
-
-showScene()
-
-}else{
-
-next.style.display="none"
-
-const choice = document.getElementById("choice")
-
-choice.style.display="block"
-
-setTimeout(()=>{
-choice.style.opacity=1
-},50)
-
-}
-
+  if(step < scenes.length){
+    showScene();
+  } else {
+    next.style.display="none";
+    const choice = document.getElementById("choice");
+    choice.style.display="block";
+    setTimeout(()=>{choice.style.opacity=1},50);
+  }
 }
 
 window.yes = function() {
   console.log("yes() called");
 
-  const fadeDuration = 3000; // 3 секунды для кроссфейда
-  const fadeInterval = 50;    // интервал обновления громкости
+  const fadeDuration = 3000; // 3 секунды
+  const fadeInterval = 50;
   const maxVolume = 0.6;
 
-  const oldTrack = document.getElementById("music");
+  if(!musicTrack) return;
 
-  // создаём новый трек как отдельный объект
-  const newTrack = new Audio("/sound/breakdown.mp3");
-  newTrack.volume = 0;
-  newTrack.currentTime = 0;
+  // создаём новый трек
+  const { track: newTrack, analyser: newAnalyser } = createAudio("/sound/breakdown.mp3", 0);
+  activeAnalyser = newAnalyser;
 
-  // подключаем к AudioContext и анализатору
-  const newTrackAnalyser = audioCtx.createAnalyser();
-  newTrackAnalyser.fftSize = 64;
-  const newSource = audioCtx.createMediaElementSource(newTrack);
-  newSource.connect(newTrackAnalyser);
-  newTrackAnalyser.connect(audioCtx.destination);
-
-  // переключаем draw() на новый анализатор
-  activeAnalyser = newTrackAnalyser;
-
-  // запускаем новый трек
-  newTrack.play().then(() => console.log("Breakdown started")).catch(console.error);
-
-  // рассчитываем шаги fade
   const steps = fadeDuration / fadeInterval;
-  const fadeOutStep = oldTrack.volume / steps;
+  const fadeOutStep = musicTrack.volume / steps;
   const fadeInStep = maxVolume / steps;
 
-  // кроссфейд
   const crossfade = setInterval(() => {
-    oldTrack.volume = Math.max(0, oldTrack.volume - fadeOutStep);
+    musicTrack.volume = Math.max(0, musicTrack.volume - fadeOutStep);
     newTrack.volume = Math.min(maxVolume, newTrack.volume + fadeInStep);
 
-    if (oldTrack.volume === 0 && newTrack.volume >= maxVolume) {
+    if (musicTrack.volume === 0 && newTrack.volume >= maxVolume) {
       clearInterval(crossfade);
-      oldTrack.pause();
-      oldTrack.currentTime = 0;
+      musicTrack.pause();
+      musicTrack.currentTime = 0;
+      musicTrack = newTrack; // новый трек становится активным
       console.log("Crossfade complete");
     }
   }, fadeInterval);
@@ -171,7 +163,6 @@ window.yes = function() {
     container.style.opacity = "1";
   }, fadeDuration);
 }
-
 window.no = function(){
 
 document.body.innerHTML = `
@@ -226,7 +217,7 @@ const ctxs = canvases.map(c => {
   return c.getContext("2d");
 });
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
 function connectAudio(audioElement) {
   const source = audioCtx.createMediaElementSource(audioElement);
   const analyser = audioCtx.createAnalyser();
@@ -235,8 +226,6 @@ function connectAudio(audioElement) {
   analyser.connect(audioCtx.destination);
   return analyser;
 }
-
-let activeAnalyser = connectAudio(document.getElementById("music"));
 
 function draw() {
   requestAnimationFrame(draw);
