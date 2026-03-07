@@ -119,12 +119,22 @@ window.yes = function() {
 
   const oldTrack = document.getElementById("music");
 
-  // создаём новый трек как отдельный объект, чтобы поток был чистый
+  // создаём новый трек как отдельный объект
   const newTrack = new Audio("/sound/breakdown.mp3");
   newTrack.volume = 0;
   newTrack.currentTime = 0;
 
-  // запускаем новый трек сразу
+  // подключаем к AudioContext и анализатору
+  const newTrackAnalyser = audioCtx.createAnalyser();
+  newTrackAnalyser.fftSize = 64;
+  const newSource = audioCtx.createMediaElementSource(newTrack);
+  newSource.connect(newTrackAnalyser);
+  newTrackAnalyser.connect(audioCtx.destination);
+
+  // переключаем draw() на новый анализатор
+  activeAnalyser = newTrackAnalyser;
+
+  // запускаем новый трек
   newTrack.play().then(() => console.log("Breakdown started")).catch(console.error);
 
   // рассчитываем шаги fade
@@ -137,7 +147,6 @@ window.yes = function() {
     oldTrack.volume = Math.max(0, oldTrack.volume - fadeOutStep);
     newTrack.volume = Math.min(maxVolume, newTrack.volume + fadeInStep);
 
-    // когда старый трек полностью затух и новый достиг максимума
     if (oldTrack.volume === 0 && newTrack.volume >= maxVolume) {
       clearInterval(crossfade);
       oldTrack.pause();
@@ -205,5 +214,61 @@ dot.remove()
 },500)
 
 })
+
+const canvases = [
+  document.getElementById("leftViz"),
+  document.getElementById("rightViz")
+];
+
+const ctxs = canvases.map(c => {
+  c.width = 250;
+  c.height = window.innerHeight;
+  return c.getContext("2d");
+});
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function connectAudio(audioElement) {
+  const source = audioCtx.createMediaElementSource(audioElement);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 64;
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  return analyser;
+}
+
+let activeAnalyser = connectAudio(document.getElementById("music"));
+
+function draw() {
+  requestAnimationFrame(draw);
+  const dataArray = new Uint8Array(activeAnalyser.frequencyBinCount);
+  activeAnalyser.getByteFrequencyData(dataArray);
+
+  ctxs.forEach((ctx, idx) => {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    for (let i = 0; i < dataArray.length; i++) {
+      const value = dataArray[i];
+      const barHeight = (value / 255) * (ctx.canvas.height / 2);
+      const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+      gradient.addColorStop(0, "#ff5555");
+      gradient.addColorStop(1, "#7a0000");
+      ctx.fillStyle = gradient;
+
+      const barWidth = ctx.canvas.width / dataArray.length;
+
+      if (idx === 0) {
+        // Левый canvas: растём к центру
+        ctx.fillRect(i * barWidth, ctx.canvas.height/2 - barHeight, barWidth*0.8, barHeight); // вверх
+        ctx.fillRect(i * barWidth, ctx.canvas.height/2, barWidth*0.8, barHeight); // вниз
+      } else {
+        // Правый canvas: зеркально
+        ctx.fillRect(ctx.canvas.width - i * barWidth - barWidth*0.8, ctx.canvas.height/2 - barHeight, barWidth*0.8, barHeight); // вверх
+        ctx.fillRect(ctx.canvas.width - i * barWidth - barWidth*0.8, ctx.canvas.height/2, barWidth*0.8, barHeight); // вниз
+      }
+    }
+  });
+}
+
+draw();
 
 })

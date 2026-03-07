@@ -6,6 +6,10 @@ padding:0;
 
 /* фон страницы */
 
+#leftViz, #rightViz {
+  pointer-events: none; /* чтобы не мешали кликам */
+}
+
 body{
 
 background:#050505;
