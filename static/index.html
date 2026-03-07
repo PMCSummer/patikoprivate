@@ -1,294 +1,39 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Reliable Call</title>
 
-<style>
-body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-    background: radial-gradient(1200px 600px at 50% 0%, #1c1f26 0%, #0c0e12 60%);
-    color: #f5f5f7;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    letter-spacing: -0.01em;
-}
+<meta charset="UTF-8">
 
-/* Алюминиевый корпус */
-.card {
-    position: relative;
-    background: linear-gradient(
-        145deg,
-        #2a2f38 0%,
-        #1c2027 40%,
-        #16191f 100%
-    );
-    padding: 48px 40px;
-    border-radius: 28px;
-    width: 380px;
-    text-align: center;
+<title>A Small Story</title>
 
-    box-shadow:
-        0 30px 80px rgba(0,0,0,0.65),
-        inset 0 1px 0 rgba(255,255,255,0.05),
-        inset 0 -1px 0 rgba(0,0,0,0.4);
-    
-    border: 1px solid rgba(255,255,255,0.04);
-}
+<link rel="stylesheet" href="/static/style.css">
 
-/* Лёгкая металлическая текстура */
-.card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 28px;
-    background-image: linear-gradient(
-        rgba(255,255,255,0.015) 1px,
-        transparent 1px
-    );
-    background-size: 100% 2px;
-    pointer-events: none;
-}
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@300&display=swap" rel="stylesheet">
 
-/* Заголовок */
-h2 {
-    margin: 0 0 24px 0;
-    font-weight: 600;
-    font-size: 20px;
-    color: #ffffff;
-    letter-spacing: -0.02em;
-}
-
-/* Статус */
-.status {
-    margin: 20px 0;
-    font-size: 14px;
-    color: #b8bcc5;
-    font-weight: 500;
-}
-
-/* Кнопка в стиле алюминиевой панели */
-button {
-    width: 100%;
-    padding: 14px;
-    border-radius: 16px;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-
-    background: linear-gradient(
-        180deg,
-        #3a8bff 0%,
-        #2f6df6 100%
-    );
-
-    box-shadow:
-        0 8px 20px rgba(47,109,246,0.35),
-        inset 0 1px 0 rgba(255,255,255,0.25);
-
-    color: white;
-    transition: all 0.2s ease;
-}
-
-/* Hover — как лёгкое отражение света */
-button:hover {
-    transform: translateY(-1px);
-    box-shadow:
-        0 12px 25px rgba(47,109,246,0.45),
-        inset 0 1px 0 rgba(255,255,255,0.3);
-}
-
-/* Нажатие */
-button:active {
-    transform: translateY(0px);
-    box-shadow:
-        0 4px 12px rgba(47,109,246,0.35),
-        inset 0 2px 4px rgba(0,0,0,0.4);
-}
-
-/* Disabled */
-button:disabled {
-    background: linear-gradient(
-        180deg,
-        #3a3f47 0%,
-        #2a2e35 100%
-    );
-    color: #7a7f88;
-    box-shadow:
-        inset 0 1px 2px rgba(0,0,0,0.6);
-    cursor: not-allowed;
-}
-
-audio {
-    display: none;
-}
-</style>
 </head>
+
 <body>
 
-<div class="card">
-    <h2>🎙 Reliable Audio Call</h2>
-    <div class="status" id="status">Connecting...</div>
-    <button id="start" disabled>Start Call</button>
-    <audio id="remoteAudio" autoplay playsinline></audio>
+<div id="container">
+
+<div id="text"></div>
+
+<button id="next">continue</button>
+
+<div id="choice">
+
+<button onclick="yes()">Yes</button>
+<button onclick="no()">No</button>
+
 </div>
 
-<script>
-let ws;
-let peer = null;
-let localStream = null;
+</div>
 
-let isInitiator = false;
-let isReady = false;
-let started = false;
-let bothStarted = false;
+<audio id="music">
+<source src="/sound/all_i_need_instrumental.mp3" type="audio/mpeg">
+</audio>
 
-const statusEl = document.getElementById("status");
-const startBtn = document.getElementById("start");
-const remoteAudio = document.getElementById("remoteAudio");
+<script src="/static/script.js"></script>
 
-function setStatus(s){
-    statusEl.textContent = s;
-    console.log("[STATUS]", s);
-}
-
-function connectWS(){
-    const protocol = location.protocol === "https:" ? "wss://" : "ws://";
-    ws = new WebSocket(protocol + location.host + "/ws");
-
-    ws.onopen = () => setStatus("Waiting for second user...");
-
-    ws.onclose = () => {
-        setStatus("Reconnecting...");
-        setTimeout(connectWS, 1000);
-    };
-
-    ws.onmessage = async (msg)=>{
-        const data = JSON.parse(msg.data);
-
-        if(data.type==="initiator") isInitiator = true;
-
-        if(data.type==="ready"){
-            isReady = true;
-            startBtn.disabled = false;
-            setStatus("Ready");
-        }
-
-        if(data.type==="both_started"){
-            bothStarted = true;
-            setStatus("Connecting peers...");
-            if(isInitiator) await createOffer();
-        }
-
-        if(data.type==="offer"){
-            await ensurePeer();
-            await peer.setRemoteDescription(data.offer);
-            const answer = await peer.createAnswer();
-            await peer.setLocalDescription(answer);
-            ws.send(JSON.stringify({type:"answer",answer}));
-        }
-
-        if(data.type==="answer"){
-            await peer.setRemoteDescription(data.answer);
-        }
-
-        if(data.type==="ice"){
-            if(peer) await peer.addIceCandidate(data.candidate);
-        }
-
-        if(data.type==="peer_disconnected"){
-            setStatus("Peer left");
-            reset();
-        }
-    };
-}
-
-connectWS();
-
-const config = {
-  iceServers: [
-    {
-      urls: "stun:stun.relay.metered.ca:80",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80",
-      username: "63864b01e4a0797f25e621f0",
-      credential: "cxnzOHJAAXJDNJtp",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:80?transport=tcp",
-      username: "63864b01e4a0797f25e621f0",
-      credential: "cxnzOHJAAXJDNJtp",
-    },
-    {
-      urls: "turn:global.relay.metered.ca:443",
-      username: "63864b01e4a0797f25e621f0",
-      credential: "cxnzOHJAAXJDNJtp",
-    },
-    {
-      urls: "turns:global.relay.metered.ca:443?transport=tcp",
-      username: "63864b01e4a0797f25e621f0",
-      credential: "cxnzOHJAAXJDNJtp",
-    }
-  ]
-};
-
-async function ensurePeer(){
-    if(peer) return;
-    peer = new RTCPeerConnection(config);
-
-    peer.ontrack = e=>{
-        remoteAudio.srcObject = e.streams[0];
-        setStatus("Call active 🎧");
-    };
-
-    peer.onicecandidate = e=>{
-        if(e.candidate){
-            ws.send(JSON.stringify({type:"ice",candidate:e.candidate}));
-        }
-    };
-}
-
-async function createOffer(){
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    ws.send(JSON.stringify({type:"offer",offer}));
-}
-
-function reset(){
-    if(peer){ peer.close(); peer=null; }
-    if(localStream){
-        localStream.getTracks().forEach(t=>t.stop());
-        localStream=null;
-    }
-    started=false;
-    bothStarted=false;
-    startBtn.disabled=!isReady;
-}
-
-startBtn.onclick = async ()=>{
-    if(started) return;
-
-    started=true;
-    startBtn.disabled=true;
-    setStatus("Accessing microphone...");
-
-    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
-    await ensurePeer();
-
-    localStream.getTracks().forEach(t=>{
-        peer.addTrack(t,localStream);
-    });
-
-    ws.send(JSON.stringify({type:"start"}));
-    setStatus("Waiting for peer...");
-};
-</script>
 </body>
 </html>
