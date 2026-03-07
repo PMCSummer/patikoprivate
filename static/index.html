@@ -7,12 +7,16 @@
 
 <link rel="stylesheet" href="/static/style.css">
 
-<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&display=swap" rel="stylesheet">
 
 </head>
 
 <body>
+<video id="bgVideo" autoplay muted loop playsinline>
+  <source src="/static/WaitingEvent.mp4" type="video/mp4">
+</video>
 
+<div id="videoOverlay"></div>
 <!-- Внутри <body> -->
 <canvas id="leftViz" style="position:fixed;left:0;top:0;width:250px;height:100vh;z-index:1;"></canvas>
 <canvas id="rightViz" style="position:fixed;right:0;top:0;width:250px;height:100vh;z-index:1;"></canvas>

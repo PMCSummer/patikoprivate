@@ -21,24 +21,42 @@ let typing = false
 
 const scenes = [
 
-`Some stories don't start loudly.<br><br>They start quietly.`,
+`Some stories do not arrive with thunder.<br><br>
+They begin the way night begins —<br>
+softly, almost unnoticed.`,
 
-`Two people.<br>Some distance.<br>A strange moment in time.`,
+`Two lives,<br>
+moving along their quiet orbits,<br>
+suddenly crossing.`,
 
-`I didn't expect to meet someone like you.<br><br>
-A tattoo artist.<br>
-A guitarist.<br>
-Someone who listens to Radiohead.`,
+`And in that brief crossing,<br>
+something curious appears —<br>
+not noise,<br>
+not spectacle,<br>
+but recognition.`,
 
-`You once said you like stories<br>
-where something honest begins.`,
+`You are someone rare.<br><br>
+Someone who does not hide behind masks,<br>
+someone whose honesty feels<br>
+almost disarming.`,
 
-`No pretending.<br>No games.<br>Just something real.`,
+`You listen.<br>
+You understand.<br>
+And somehow,<br>
+you make the strange parts of me<br>
+feel less strange.`,
 
-`So I want to ask you something.`,
+`In a world that often feels hollow,<br>
+meeting someone sincere<br>
+is almost miraculous.`,
 
-`Would you start this story with me?`
+`So I find myself wondering something simple.`,
 
+`What if this moment<br>
+is not an accident at all?`,
+
+`So I want to ask you something.<br><br>
+Would you begin this story with me?`
 ]
 
 const text = document.getElementById("text")
@@ -118,6 +136,11 @@ next.onclick = () => {
 }
 
 window.yes = function() {
+  const bgVideo = document.getElementById("bgVideo");
+
+  bgVideo.src = "/static/YesEvent.mp4";
+  bgVideo.loop = false;
+  bgVideo.play();
   console.log("yes() called");
 
   const fadeDuration = 3000; // 3 секунды
