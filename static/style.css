@@ -1,7 +1,11 @@
+*{
+box-sizing:border-box;
+}
+
 body{
 
 background:#050505;
-color:#d6d6d6;
+color:#e8e8e8;
 
 font-family:'Cormorant',serif;
 
@@ -14,7 +18,37 @@ margin:0;
 
 text-align:center;
 
+overflow:hidden;
+
 }
+
+#text{
+
+text-shadow:
+0 0 6px rgba(120,0,0,0.4),
+0 0 18px rgba(120,0,0,0.2);
+
+}
+
+/* атмосферный шум */
+
+body::before{
+
+content:"";
+position:fixed;
+
+width:100%;
+height:100%;
+
+background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+
+opacity:0.08;
+
+pointer-events:none;
+
+}
+
+/* контейнер */
 
 #container{
 
@@ -23,11 +57,16 @@ padding:40px;
 
 }
 
+/* текст */
+
 #text{
 
-font-size:26px;
-line-height:1.6;
+font-size:30px;
+line-height:1.7;
+
 opacity:0;
+transform:translateY(10px);
+
 transition:2s;
 
 }
@@ -35,36 +74,133 @@ transition:2s;
 .show{
 
 opacity:1;
+transform:translateY(0);
+
+}
+
+/* кнопка */
+
+button{
+
+background:none;
+
+border:1px solid #7a0000;
+
+color:#e8e8e8;
+
+padding:14px 32px;
+
+margin-top:40px;
+
+font-size:18px;
+
+letter-spacing:1px;
+
+cursor:pointer;
+
+transition:0.5s;
+
+}
+
+/* hover */
+
+button:hover{
+
+background:#7a0000;
+border-color:#7a0000;
+
+box-shadow:
+0 0 10px rgba(120,0,0,0.7),
+0 0 30px rgba(120,0,0,0.4);
+
+}
+
+/* пульсация */
+
+#next{
+
+animation:pulse 3s infinite;
+
+}
+
+@keyframes pulse{
+
+0%{opacity:0.6}
+50%{opacity:1}
+100%{opacity:0.6}
+
+}
+
+/* кнопки yes/no */
+
+#choice{
+
+display:none;
+margin-top:50px;
+opacity:0;
+transition:2s;
+
+}
+
+#choice button{
+
+margin:15px;
+
+font-size:20px;
+
+padding:16px 40px;
+
+}
+
+/* Yes немного ярче */
+
+#choice button:first-child{
+
+border-color:#9b0000;
+
+}
+
+body::after{
+
+content:"";
+position:fixed;
+
+width:200%;
+height:200%;
+
+background:url("https://www.transparenttextures.com/patterns/dark-matter.png");
+background-repeat:repeat;
+opacity:0.05;
+
+animation:fog 60s linear infinite;
+
+pointer-events:none;
+
+}
+
+@keyframes fog{
+
+0%{transform:translateX(0)}
+100%{transform:translateX(-50%)}
+
+}
+
+/* адаптация под ipad */
+
+@media (max-width:768px){
+
+#text{
+
+font-size:24px;
 
 }
 
 button{
 
-background:none;
-border:1px solid #8b0000;
+font-size:16px;
 
-color:#d6d6d6;
-
-padding:12px 28px;
-margin-top:30px;
-
-font-size:18px;
-
-cursor:pointer;
-
-transition:0.4s;
+padding:12px 24px;
 
 }
-
-button:hover{
-
-background:#8b0000;
-
-}
-
-#choice{
-
-display:none;
-margin-top:40px;
 
 }

@@ -11,4 +11,4 @@ app.mount("/sound", StaticFiles(directory="sound"), name="sound")
 
 @app.get("/")
 def index():
-    return FileResponse("index.html")
+    return FileResponse("static/index.html")
