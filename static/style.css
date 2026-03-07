@@ -1,6 +1,10 @@
 *{
 box-sizing:border-box;
+margin:0;
+padding:0;
 }
+
+/* фон страницы */
 
 body{
 
@@ -14,7 +18,6 @@ justify-content:center;
 align-items:center;
 
 height:100vh;
-margin:0;
 
 text-align:center;
 
@@ -22,35 +25,71 @@ overflow:hidden;
 
 }
 
-#text{
-
-text-shadow:
-0 0 6px rgba(120,0,0,0.4),
-0 0 18px rgba(120,0,0,0.2);
-
-}
-
-/* атмосферный шум */
+/* шум */
 
 body::before{
 
 content:"";
 position:fixed;
 
+top:0;
+left:0;
+
 width:100%;
 height:100%;
 
-background-image:url("https://grainy-gradients.vercel.app/noise.svg");
+background-image: url("voron.png");
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
 
 opacity:0.08;
 
 pointer-events:none;
+
+z-index:-2;
+
+}
+
+/* туман */
+
+body::after{
+
+content:"";
+position:fixed;
+
+top:0;
+left:0;
+
+width:200%;
+height:200%;
+
+background-image: url(http://www.transparenttextures.com/patterns/axiom-pattern.png);
+background-repeat:repeat;
+
+opacity:0.05;
+
+animation:fog 60s linear infinite;
+
+pointer-events:none;
+
+z-index:-1;
+
+}
+
+@keyframes fog{
+
+0%{transform:translateX(0)}
+100%{transform:translateX(-50%)}
 
 }
 
 /* контейнер */
 
 #container{
+
+position:relative;
+z-index:2;
 
 max-width:700px;
 padding:40px;
@@ -65,20 +104,23 @@ font-size:30px;
 line-height:1.7;
 
 opacity:0;
+
 transform:translateY(10px);
 
 transition:2s;
 
+text-shadow:
+0 0 6px rgba(120,0,0,0.4),
+0 0 18px rgba(120,0,0,0.2);
+
 }
 
-.show{
-
+#text.show{
 opacity:1;
 transform:translateY(0);
-
 }
 
-/* кнопка */
+/* кнопки */
 
 button{
 
@@ -102,8 +144,6 @@ transition:0.5s;
 
 }
 
-/* hover */
-
 button:hover{
 
 background:#7a0000;
@@ -115,7 +155,7 @@ box-shadow:
 
 }
 
-/* пульсация */
+/* анимация кнопки */
 
 #next{
 
@@ -131,13 +171,16 @@ animation:pulse 3s infinite;
 
 }
 
-/* кнопки yes/no */
+/* выбор */
 
 #choice{
 
 display:none;
+
 margin-top:50px;
+
 opacity:0;
+
 transition:2s;
 
 }
@@ -152,55 +195,23 @@ padding:16px 40px;
 
 }
 
-/* Yes немного ярче */
-
 #choice button:first-child{
 
 border-color:#9b0000;
 
 }
 
-body::after{
-
-content:"";
-position:fixed;
-
-width:200%;
-height:200%;
-
-background:url("https://www.transparenttextures.com/patterns/dark-matter.png");
-background-repeat:repeat;
-opacity:0.05;
-
-animation:fog 60s linear infinite;
-
-pointer-events:none;
-
-}
-
-@keyframes fog{
-
-0%{transform:translateX(0)}
-100%{transform:translateX(-50%)}
-
-}
-
-/* адаптация под ipad */
+/* адаптация */
 
 @media (max-width:768px){
 
 #text{
-
 font-size:24px;
-
 }
 
 button{
-
 font-size:16px;
-
 padding:12px 24px;
-
 }
 
 }

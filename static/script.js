@@ -1,4 +1,7 @@
+document.addEventListener("DOMContentLoaded", () => {
+
 let step = 0
+let typing = false
 
 const scenes = [
 
@@ -28,25 +31,60 @@ const music = document.getElementById("music")
 
 function showScene(){
 
-text.classList.remove("show")
+  text.classList.remove("show")
+  text.innerHTML = ""  // очищаем текст
 
-setTimeout(()=>{
+  // заставляем браузер пересчитать
+  text.offsetHeight
 
-typeText(scenes[step], text)
-text.classList.add("show")
+  // небольшой таймаут, чтобы класс добавился корректно
+  setTimeout(()=>{
+      text.classList.add("show")
+      typeText(scenes[step], text)
+  }, 50)  // 50мс — достаточно
+}
 
-},400)
+function typeText(html, element, speed = 35){
 
+  let i = 0
+  typing = true
+  element.innerHTML = ""  // очистка текста
+
+  const cursor = `<span class="cursor">|</span>`
+
+  function typingLoop(){
+
+    if(i >= html.length){
+      typing = false
+      element.innerHTML = element.innerHTML.replace(cursor,"") + cursor
+      return
+    }
+
+    if(html.substring(i,i+4) === "<br>"){
+      element.innerHTML = element.innerHTML.replace(cursor,"") + "<br>" + cursor
+      i += 4
+    }else{
+      element.innerHTML = element.innerHTML.replace(cursor,"") + html[i] + cursor
+      i++
+    }
+
+    setTimeout(typingLoop,speed)
+  }
+
+  element.innerHTML = cursor
+  typingLoop()
 }
 
 showScene()
 
 next.onclick = () => {
 
+if(typing) return
+
 if(step === 0){
 
 music.volume = 0.6
-music.play()
+music.play().catch(()=>{})
 
 }
 
@@ -59,67 +97,73 @@ showScene()
 }else{
 
 next.style.display="none"
-document.getElementById("choice").style.display="block"
+
+const choice = document.getElementById("choice")
+
+choice.style.display="block"
 
 setTimeout(()=>{
-document.getElementById("choice").style.opacity=1
+choice.style.opacity=1
 },50)
 
 }
 
 }
 
-function yes(){
+window.yes = function() {
+  console.log("yes() called");
 
-document.body.style.transition="3s"
-document.body.style.opacity="0"
+  const fadeDuration = 3000; // 3 секунды для кроссфейда
+  const fadeInterval = 50;    // интервал обновления громкости
+  const maxVolume = 0.6;
 
-setTimeout(()=>{
+  const oldTrack = document.getElementById("music");
 
-document.body.innerHTML = `
-<div style="text-align:center;color:#e8e8e8;font-family:Cormorant,serif">
+  // создаём новый трек как отдельный объект, чтобы поток был чистый
+  const newTrack = new Audio("/sound/breakdown.mp3");
+  newTrack.volume = 0;
+  newTrack.currentTime = 0;
 
-<h1 style="font-size:42px">Then today becomes the beginning</h1>
+  // запускаем новый трек сразу
+  newTrack.play().then(() => console.log("Breakdown started")).catch(console.error);
 
-<p style="font-size:26px;margin-top:20px">March 8</p>
+  // рассчитываем шаги fade
+  const steps = fadeDuration / fadeInterval;
+  const fadeOutStep = oldTrack.volume / steps;
+  const fadeInStep = maxVolume / steps;
 
-<p style="margin-top:20px;font-size:22px">Welcome to us</p>
+  // кроссфейд
+  const crossfade = setInterval(() => {
+    oldTrack.volume = Math.max(0, oldTrack.volume - fadeOutStep);
+    newTrack.volume = Math.min(maxVolume, newTrack.volume + fadeInStep);
 
-</div>
-`
+    // когда старый трек полностью затух и новый достиг максимума
+    if (oldTrack.volume === 0 && newTrack.volume >= maxVolume) {
+      clearInterval(crossfade);
+      oldTrack.pause();
+      oldTrack.currentTime = 0;
+      console.log("Crossfade complete");
+    }
+  }, fadeInterval);
 
-document.body.style.opacity="1"
+  // плавный переход текста
+  const container = document.getElementById("container");
+  container.style.transition = "3s";
+  container.style.opacity = "0";
 
-},3000)
-
+  setTimeout(() => {
+    container.innerHTML = `
+      <div style="text-align:center;color:#e8e8e8;font-family:Cormorant,serif">
+        <h1 style="font-size:42px">Then today becomes the beginning</h1>
+        <p style="font-size:26px;margin-top:20px">March 8</p>
+        <p style="margin-top:20px;font-size:22px">Welcome to us</p>
+      </div>
+    `;
+    container.style.opacity = "1";
+  }, fadeDuration);
 }
 
-function typeText(html, element, speed = 35){
-
-let i = 0
-element.innerHTML = ""
-
-function typing(){
-
-if(i >= html.length) return
-
-if(html.substring(i, i+4) === "<br>"){
-element.innerHTML += "<br>"
-i += 4
-}else{
-element.innerHTML += html[i]
-i++
-}
-
-setTimeout(typing, speed)
-
-}
-
-typing()
-
-}
-
-function no(){
+window.no = function(){
 
 document.body.innerHTML = `
 
@@ -135,6 +179,8 @@ document.body.innerHTML = `
 
 }
 
+/* частицы мыши */
+
 document.addEventListener("mousemove", e => {
 
 const dot = document.createElement("div")
@@ -142,10 +188,14 @@ const dot = document.createElement("div")
 dot.style.position="fixed"
 dot.style.left=e.clientX+"px"
 dot.style.top=e.clientY+"px"
+
 dot.style.width="2px"
 dot.style.height="2px"
+
 dot.style.background="#7a0000"
+
 dot.style.opacity="0.6"
+
 dot.style.pointerEvents="none"
 
 document.body.appendChild(dot)
@@ -153,5 +203,7 @@ document.body.appendChild(dot)
 setTimeout(()=>{
 dot.remove()
 },500)
+
+})
 
 })
